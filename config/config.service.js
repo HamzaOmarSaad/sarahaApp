@@ -1,16 +1,14 @@
-//in config/config.service.js
 import { config } from "dotenv";
 import { resolve } from "node:path";
 
 const NODE_ENV = process.env.NODE_ENV;
 const envPathes = {
-  devolpment: ".env.devlopment",
+  development: ".env.development",
   production: ".env.production",
 };
-config({ path: resolve(`./config/${envPathes[NODE_ENV]}`) });
+const env = envPathes[NODE_ENV];
+config({ path: resolve(`./config/${env}`) });
 
 export const PORT = process.env.PORT || 3000;
 
-export const DB_HOST = process.env.PORT || "127.0.0.1";
-
-export const DB_PORT = parseInt(process.env.PORT) || 3306;
+export const DB_URI = process.env.DB_URI;
