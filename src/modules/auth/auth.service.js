@@ -1,6 +1,7 @@
 import UserModel from "../../DB/models/userModel.js";
 import { createDoc, findOneDoc } from "../../DB/repos/repo.js";
-import { compareHash, generateHash } from "../../utils/Hashing.security.js";
+import { compareHash, generateHash } from "../../security/Hashing.security.js";
+import { generateToken, verifyToken } from "../../security/token.security.js";
 import { errorHandle } from "../../utils/resHandler.js";
 
 export const signupService = async ({ username, password, email, gender }) => {
@@ -36,8 +37,25 @@ export const loginService = async (email, password) => {
   if (!match) {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
-  return isUser;
+
+  const accessToken = generateToken({
+    payload: { _id: decoded._id },
+    options: {
+      expiresIn: "15m",
+    },
+    tokentype: "access",
+  });
+  const refreshToken = generateToken({
+    payload: { _id: decoded._id },
+    options: {
+      expiresIn: "7d",
+    },
+    tokentype: "refresh",
+  });
+
+  return { accessToken, refreshToken, isUser };
 };
+
 export const sendOtpService = async (email) => {
   const otp = generateOTP();
 
@@ -51,6 +69,7 @@ export const sendOtpService = async (email) => {
 
   await sendOTPEmail(email, otp);
 };
+
 export const verifyOTPService = async (email, otp) => {
   const user = await findOneDoc({ filter: { email }, model: UserModel });
 
@@ -66,4 +85,22 @@ export const verifyOTPService = async (email, otp) => {
   user.otpExpires = null;
 
   await user.save();
+};
+
+export const refreshService = async (refreshToken) => {
+  const decoded = verifyToken({ token: refreshToken, tokentype: "refersh" });
+  const user = await findOneDoc({
+    model: UserModel,
+    filter: { id: decoded._id },
+  });
+  if (!user) throw errorHandle({ message: "not a user " });
+
+  const accessToken = generateToken({
+    payload: { _id: decoded._id },
+    options: {
+      expiresIn: "1h",
+    },
+    tokentype: "access",
+  });
+  return accessToken;
 };

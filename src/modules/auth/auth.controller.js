@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   loginService,
+  refreshService,
   sendOtpService,
   signupService,
   verifyOTPService,
@@ -44,4 +45,10 @@ router.post("/verifyOTP", async (req, res) => {
   res.json({ message: "Email verified successfully" });
 });
 
+router.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body;
+  const accessToken = await refreshService(refreshToken);
+
+  res.json({ data: accessToken });
+});
 export default router;
