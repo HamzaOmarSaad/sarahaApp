@@ -81,6 +81,22 @@ export const sendOtpService = async (email) => {
 
   await sendOTPEmail(email, otp);
 };
+export const reSendOtpService = async (email) => {
+  if (user.otpExpires > Date.now() - 60 * 1000) {
+    throw new Error("Wait before requesting another OTP");
+  }
+  const otp = generateOTP();
+
+  await UserModel.updateOne(
+    { email },
+    {
+      otp,
+      otpExpires: Date.now() + 5 * 60 * 1000,
+    },
+  );
+
+  await sendOTPEmail(email, otp);
+};
 
 export const verifyOTPService = async (email, otp) => {
   const user = await findOneDoc({ filter: { email }, model: UserModel });
