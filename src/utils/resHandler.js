@@ -17,5 +17,6 @@ export const errorHandle = ({ message = "error", status = "400" }) => {
     },
   });
   error.status(status);
+
   return error;
 };

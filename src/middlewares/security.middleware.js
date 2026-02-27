@@ -1,13 +1,10 @@
 //for token handler
-
-import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "../../config/config.service.js";
 import { errorHandle } from "../utils/resHandler.js";
 import { findOneDoc } from "../DB/repos/repo.js";
 import UserModel from "../DB/models/userModel.js";
 import { verifyToken } from "../security/token.security.js";
 
-const authMiddleware = async (req, res, next) => {
+export const authentication = async (req, res, next) => {
   const { authorization } = req.headers;
   if (!authorization) {
     throw errorHandle({ message: "no token sent", status: 401 });
@@ -28,4 +25,11 @@ const authMiddleware = async (req, res, next) => {
     throw errorHandle({ message: "invalid token  ", status: 401 });
   }
 };
-export default authMiddleware;
+export const authorization = (roles = []) => {
+  async (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      throw errorHandle({ message: " not authorized user ", status: 401 });
+    }
+    next();
+  };
+};

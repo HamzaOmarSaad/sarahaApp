@@ -1,5 +1,7 @@
 import mongoose, { model, Schema } from "mongoose";
 import { Gender } from "../enums/userEnums.js";
+import { provider, RoleEnum } from "../../enums/security.enums.js";
+import { decrypt, encrypt } from "../../security/encryption.security.js";
 
 const UserSchema = new Schema(
   {
@@ -18,12 +20,39 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
-      required: true,
       minLength: 13,
+      required: function () {
+        if (this.provider == provider.system) {
+          return true;
+        } else {
+          return false;
+        }
+      },
+    },
+    phone: {
+      type: String,
+      set: function (value) {
+        if (value) {
+          return encrypt(value, "cryptojs");
+        }
+      },
+      get: function (value) {
+        if (value) {
+          return decrypt(value, "cryptojs");
+        }
+      },
     },
     gender: {
       type: Number,
       enum: [Gender.male, Gender.female],
+    },
+    role: {
+      type: Number,
+      enum: [RoleEnum.admin, RoleEnum.user],
+    },
+    provider: {
+      type: Number,
+      enum: Object.values(provider),
     },
     isdeleted: {
       type: Boolean,

@@ -1,9 +1,19 @@
 import UserModel from "../../DB/models/userModel.js";
 import { createDoc, findOneDoc } from "../../DB/repos/repo.js";
+import { provider } from "../../enums/security.enums.js";
 import { compareHash, generateHash } from "../../security/Hashing.security.js";
-import { generateToken, verifyToken } from "../../security/token.security.js";
+import {
+  generateToken,
+  verifyToken,
+  createLoginTokens,
+} from "../../security/token.security.js";
 import { errorHandle } from "../../utils/resHandler.js";
+import { OAuth2Client } from "google-auth-library";
 
+// google login client
+const client = new OAuth2Client(
+  "884770927564-aqqt68ea32mh8rnl9rdm2bbu2ak5hm8s.apps.googleusercontent.com",
+);
 export const signupService = async ({ username, password, email, gender }) => {
   const isEmail = await findOneDoc({
     filter: { email },
@@ -13,7 +23,10 @@ export const signupService = async ({ username, password, email, gender }) => {
   if (isEmail) {
     throw errorHandle({ message: "email alredy exist", status: 400 });
   }
-  const hashedPass = await generateHash({ text: password });
+  let hashedPass = undefined;
+  if (password) {
+    hashedPass = await generateHash({ text: password });
+  }
   const data = {
     username,
     email,
@@ -24,33 +37,32 @@ export const signupService = async ({ username, password, email, gender }) => {
   return user;
 };
 
-export const loginService = async (email, password) => {
+export const loginService = async (email, password, iss) => {
   const isUser = await findOneDoc({
     filter: { email },
     model: UserModel,
-    select: "email password username",
+    select: "_id email password username",
   });
+  // chech provider
+  if (isUser.provider == provider.google) {
+    throw errorHandle({
+      message: "different provider use google login ",
+      status: 409,
+    });
+  }
+  // check email
   if (!isUser) {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
+  // check password
   const match = await compareHash(password, isUser.password);
   if (!match) {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
-
-  const accessToken = generateToken({
-    payload: { _id: decoded._id },
-    options: {
-      expiresIn: "15m",
-    },
-    tokentype: "access",
-  });
-  const refreshToken = generateToken({
-    payload: { _id: decoded._id },
-    options: {
-      expiresIn: "7d",
-    },
-    tokentype: "refresh",
+  //create token
+  const { accessToken, refreshToken } = createLoginTokens({
+    iss,
+    user: isUser,
   });
 
   return { accessToken, refreshToken, isUser };
@@ -100,7 +112,57 @@ export const refreshService = async (refreshToken) => {
     options: {
       expiresIn: "1h",
     },
-    tokentype: "access",
+    tokentype: tokenTypeEnum.access,
   });
   return accessToken;
+};
+export const gmailSigninService = async (googleToken) => {
+  const ticket = await client.verifyIdToken({
+    idToken: googleToken,
+    audaince:
+      "884770927564-aqqt68ea32mh8rnl9rdm2bbu2ak5hm8s.apps.googleusercontent.com",
+  });
+  const { email, name, email_verified } = ticket.getPayload();
+
+  const isEmailExist = await findOneDoc({
+    model: UserModel,
+    filter: { email },
+  });
+  // we create token in both cases if login or sign up
+  let accessToken;
+  let refreshToken;
+  let userInfo;
+  // login case
+  if (isEmailExist) {
+    if (isEmailExist.provider == provider.system) {
+      throw errorHandle({
+        message: "different provider use system login ",
+        status: 409,
+      });
+    }
+    tokens = createLoginTokens({
+      iss,
+      user: isEmailExist,
+    });
+    accessToken = tokens.accessToken;
+    refreshToken = tokens.refreshToken;
+    userInfo = isEmailExist;
+  } else {
+    // sign up
+    const data = {
+      username: name,
+      email,
+      provider: provider.google,
+      isEmailConfirmend: email_verified,
+    };
+    const user = await createDoc({ model: UserModel, data });
+    token = createLoginTokens({
+      iss,
+      user: user,
+    });
+    accessToken = tokens.accessToken;
+    refreshToken = tokens.refreshToken;
+    userInfo = user;
+  }
+  return { accessToken, refreshToken, userInfo };
 };
