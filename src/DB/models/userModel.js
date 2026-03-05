@@ -9,7 +9,7 @@ const UserSchema = new Schema(
       type: String,
       required: true,
     },
-    lastname: {
+    lastName: {
       type: String,
       required: true,
     },
@@ -54,6 +54,8 @@ const UserSchema = new Schema(
       type: Number,
       enum: Object.values(provider),
     },
+    profilePicture: String,
+    coverPictures: [{ type: String }],
     isdeleted: {
       type: Boolean,
       default: false,
@@ -62,6 +64,7 @@ const UserSchema = new Schema(
       type: Boolean,
       default: false,
     },
+
     credantial_changed_at: Date,
     otp: String,
     otpExpires: Date,
@@ -82,14 +85,19 @@ const UserSchema = new Schema(
   },
 );
 //=====virtuals=====//
-UserSchema.virtual("username")
+UserSchema.virtual("userName")
   .set(function (value) {
-    const [first, last] = value.split(" ");
+    const parts = value.trim().split(/\s+/);
+
+    const first = parts[0];
+    const last = parts.slice(1).join(" ");
     this.set("firstName", first);
-    this.set("lastname", last);
+    this.set("lastName", last);
   })
   .get(function () {
-    return `${this.firstName} ${this.lastname}`;
+    if (!this.firstName || !this.lastName) return "";
+
+    return `${this.firstName} ${this.lastName}`;
   });
 
 UserSchema.virtual("messageSent", {

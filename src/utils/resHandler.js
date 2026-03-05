@@ -1,7 +1,7 @@
 export const sucessHandle = ({
   res,
   message = "sucess",
-  status = "200",
+  status = 200,
   data = {},
 }) => {
   return res.status(status).json({
@@ -9,14 +9,14 @@ export const sucessHandle = ({
     data,
   });
 };
-export const errorHandle = ({ message = "error", status = "400" }) => {
+export const errorHandle = ({ message = "error", status = 400 }) => {
   const error = new Error(message, {
     cause: {
       status: status,
       message: message,
     },
   });
-  error.status(status);
+  error.status = status;
 
   return error;
 };

@@ -9,14 +9,15 @@ import {
 } from "./auth.service.js";
 import { errorHandle, sucessHandle } from "../../utils/resHandler.js";
 import { loginSchema, signupSchema } from "./auth.validation.js";
-import { valdiateMiddleware } from "../../middlewares/validation.middleware.js";
+import { validateMiddleware } from "../../middlewares/validation.middleware.js";
 
 const router = Router();
 
-router.post("/signup", valdiateMiddleware(signupSchema), async (req, res) => {
-  const { username, password, email, gender } = req.body;
+router.post("/signup", validateMiddleware(signupSchema), async (req, res) => {
+  const { userName, password, email, gender } = req.body;
 
-  const data = await signupService({ username, password, email, gender });
+
+  const data = await signupService({ userName, password, email, gender });
   return sucessHandle({
     res,
     data,
@@ -24,7 +25,7 @@ router.post("/signup", valdiateMiddleware(signupSchema), async (req, res) => {
     status: 201,
   });
 });
-router.post("/login", valdiateMiddleware(loginSchema), async (req, res) => {
+router.post("/login", validateMiddleware(loginSchema), async (req, res) => {
   const { password, email } = req.body;
   const data = await loginService(email, password);
   return sucessHandle({

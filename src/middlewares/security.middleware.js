@@ -5,24 +5,39 @@ import UserModel from "../DB/models/userModel.js";
 import { verifyToken } from "../security/token.security.js";
 
 export const authentication = async (req, res, next) => {
-  const { authorization } = req.headers;
-  if (!authorization) {
-    throw errorHandle({ message: "no token sent", status: 401 });
-  }
-  const token = authorization.split(" ")[1];
   try {
-    const decoded = verifyToken({ token, tokentype: "access" });
+    const { authorization } = req.headers;
+
+    if (!authorization) {
+      throw errorHandle({ message: "No token provided", status: 401 });
+    }
+
+    const token = authorization.split(" ")[1];
+    if (!token) {
+      throw errorHandle({
+        message: "Invalid authorization format",
+        status: 401,
+      });
+    }
+
+    const decoded = verifyToken({
+      token,
+      tokentype: "access",
+    });
 
     const user = await findOneDoc({
       model: UserModel,
-      filter: { id: decoded._id },
+      filter: { _id: decoded._id },
     });
-    if (!user) throw errorHandle({ message: "not a user " });
+
+    if (!user) {
+      throw errorHandle({ message: "User not found", status: 404 });
+    }
 
     req.user = user;
     next();
   } catch (error) {
-    throw errorHandle({ message: "invalid token  ", status: 401 });
+    next(errorHandle({ message: "Invalid or expired token", status: 401 }));
   }
 };
 export const authorization = (roles = []) => {

@@ -14,7 +14,7 @@ import { OAuth2Client } from "google-auth-library";
 const client = new OAuth2Client(
   "884770927564-aqqt68ea32mh8rnl9rdm2bbu2ak5hm8s.apps.googleusercontent.com",
 );
-export const signupService = async ({ username, password, email, gender }) => {
+export const signupService = async ({ userName, password, email, gender }) => {
   const isEmail = await findOneDoc({
     filter: { email },
     model: UserModel,
@@ -27,11 +27,13 @@ export const signupService = async ({ username, password, email, gender }) => {
   if (password) {
     hashedPass = await generateHash({ text: password });
   }
+
   const data = {
-    username,
+    userName,
     email,
     gender,
     password: hashedPass,
+    provider: provider.system,
   };
   const user = await createDoc({ model: UserModel, data });
   return user;
@@ -41,7 +43,7 @@ export const loginService = async (email, password, iss) => {
   const isUser = await findOneDoc({
     filter: { email },
     model: UserModel,
-    select: "_id email password username",
+    select: "_id email password  firstName lastName",
   });
   // chech provider
   if (isUser.provider == provider.google) {
@@ -55,7 +57,7 @@ export const loginService = async (email, password, iss) => {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
   // check password
-  const match = await compareHash(password, isUser.password);
+  const match = await compareHash({ text: password, hashed: isUser.password });
   if (!match) {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }

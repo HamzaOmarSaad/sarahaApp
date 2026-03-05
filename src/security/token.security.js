@@ -27,20 +27,29 @@ export const generateToken = ({ payload, options, tokentype, signature }) => {
   }
 };
 export const verifyToken = ({ token, tokentype }) => {
-  if (tokentype == "access") {
-    return jwt.verify(token, JWT_SECRET);
-  } else if (tokentype == "refresh") {
-    return jwt.verify(token, JWT_REFRESH_SECRET);
+  try {
+    if (tokentype === "access") {
+      return jwt.verify(token, process.env.JWT_SECRET);
+    }
+
+    if (tokentype === "refresh") {
+      return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    }
+  } catch (err) {
+    throw errorHandle({
+      message: "Token verification failed",
+      status: 401,
+    });
   }
 };
 
-export const createLoginTokens = ({ iss, user }) => {
+export const createLoginTokens = ({ iss = "", user, audiance = "" }) => {
   const accessToken = generateToken({
     payload: { _id: user._id },
     options: {
       expiresIn: ACCESS_EXPIRES_IN,
       issuer: iss,
-      audiance: [tokenTypeEnum.access, audiance],
+      // audiance: [tokenTypeEnum.access, audiance],
     },
     tokentype: tokenTypeEnum.access,
   });
@@ -49,7 +58,7 @@ export const createLoginTokens = ({ iss, user }) => {
     options: {
       expiresIn: REFRESH_EXPIRES_IN,
       issuer: iss,
-      audiance: [tokenTypeEnum.referesh],
+      // audiance: [tokenTypeEnum.referesh],
     },
     tokentype: tokenTypeEnum.referesh,
   });

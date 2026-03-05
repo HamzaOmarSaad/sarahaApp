@@ -40,3 +40,18 @@ export const createDoc = async ({
   const docs = await model.create(Array.isArray(data) ? data : [data], options);
   return Array.isArray(data) ? docs : docs[0];
 };
+export const updateDoc = async ({
+  model,
+  condition = {},
+  updatedValue = {},
+  options = { ValidateBeforeSave: true },
+}) => {
+  const docs = await model.updateOne(condition, { $set: updatedValue });
+
+  return docs;
+};
+export const updateDocByid = async ({ model, id, updatedValue = {} }) => {
+  const docs = await model.findByIdAndUpdate(id, updatedValue, { new: true });
+
+  return docs;
+};
