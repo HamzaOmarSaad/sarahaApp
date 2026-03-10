@@ -16,3 +16,14 @@ export const profileImageSchema = {
     size: Joi.number().required(),
   }),
 };
+export const profileImageCloudSchema = {
+  file: Joi.object({
+    fieldname: Joi.string().valid("image").required(),
+    originalname: Joi.string().required(),
+    encoding: Joi.string().required(),
+    mimetype: Joi.string()
+      .required()
+      .valid(...fileTypes.image),
+    size: Joi.number().required(),
+  }),
+};

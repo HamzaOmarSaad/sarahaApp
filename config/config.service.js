@@ -22,3 +22,9 @@ export const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 
 export const ACCESS_EXPIRES_IN = parseInt(process.env.ACCESS_EXPIRES_IN);
 export const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN;
+
+export const CLIENT_ID = process.env.CLIENT_ID;
+
+export const API_KEY = parseInt(process.env.API_KEY);
+export const API_SECRET = process.env.API_SECRET;
+export const CLOUD_NAME = process.env.CLOUD_NAME;

@@ -55,3 +55,7 @@ export const updateDocByid = async ({ model, id, updatedValue = {} }) => {
 
   return docs;
 };
+export const deleteDoc = async ({ model, filter, options }) => {
+  const doc = await model.deleteOne(filter, options);
+  return doc;
+};

@@ -64,6 +64,16 @@ const UserSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    cloudProfilePicture: {
+      public_id: { type: String },
+      secure_url: { type: String },
+    },
+    cloudCoverPictures: [
+      {
+        public_id: { type: String },
+        secure_url: { type: String },
+      },
+    ],
 
     credantial_changed_at: Date,
     otp: String,
