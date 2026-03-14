@@ -9,7 +9,7 @@ export const sucessHandle = ({
     data,
   });
 };
-export const errorHandle = ({ message = "error", status = 400 }) => {
+export const errorHandle = ({ message = "error", status = 400, data }) => {
   const error = new Error(message, {
     cause: {
       status: status,
@@ -17,6 +17,7 @@ export const errorHandle = ({ message = "error", status = 400 }) => {
     },
   });
   error.status = status;
+  error.stack = data;
 
   return error;
 };

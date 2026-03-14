@@ -1,5 +1,6 @@
 import Joi from "joi";
 import { fileTypes } from "../../middlewares/multer.middleware.js";
+import { logoutType } from "../../enums/security.enums.js";
 
 export const profileImageSchema = {
   file: Joi.object({
@@ -25,5 +26,12 @@ export const profileImageCloudSchema = {
       .required()
       .valid(...fileTypes.image),
     size: Joi.number().required(),
+  }),
+};
+export const logoutSchema = {
+  body: Joi.object({
+    flag: Joi.string()
+      .valid(...Object.values(logoutType))
+      .required(),
   }),
 };

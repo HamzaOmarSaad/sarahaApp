@@ -50,6 +50,14 @@ export const deleteUserCloudStorage = async (user) => {
   }
   await deleteDoc({ model: UserModel, filter: { _id: user._id } });
 };
+export const updatePasswordService = async (user, newPassword) => {
+  const user = updateDocByid({
+    model: UserModel,
+    id: user._id,
+    updatedValue: { password: newPassword },
+  });
+  return user;
+};
 
 // SAVING to the disk storage
 

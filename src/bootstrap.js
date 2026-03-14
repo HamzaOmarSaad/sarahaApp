@@ -4,6 +4,7 @@ import connectDB from "./DB/config/db.connection.js";
 import authRouter from "./modules/auth/auth.controller.js";
 import cors from "cors";
 import router from "./modules/userModule/user.controller.js";
+import { connectRedis } from "./DB/config/redis.connections.js";
 
 const Bootstrap = async () => {
   const app = express();
@@ -20,6 +21,7 @@ const Bootstrap = async () => {
   //const encryptionKeyGenrator = crypto.randomBytes(32).toString("hex"); // AES-256
 
   await connectDB();
+  await connectRedis();
   //invalid routing
   app.use("{/dummy}", (req, res) => {
     return res.status(404).json({ message: "invalid path" });

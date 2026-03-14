@@ -75,7 +75,7 @@ const UserSchema = new Schema(
       },
     ],
 
-    credantial_changed_at: Date,
+    credantialChangedAt: Date,
     otp: String,
     otpExpires: Date,
   },

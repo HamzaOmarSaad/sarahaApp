@@ -9,6 +9,7 @@ import {
   coverImagesService,
   delProfilePictureService,
   ProfilePictureService,
+  updatePasswordService,
 } from "./user.service.js";
 import { validateMiddleware } from "../../middlewares/validation.middleware.js";
 import {
@@ -21,9 +22,15 @@ import {
   memocloudFileUpload,
 } from "../../utils/multer/cloudinary.services.js";
 
-const router = Router();
+export const router = Router();
+// user operations
 router.get("/userinfo", authentication, async (req, res, next) => {
   const user = await UserModel.findById(req.user._id);
+  return sucessHandle({ res, message: "sucess", data: user });
+});
+router.get("/updatePassword", authentication, async (req, res, next) => {
+  const { password } = req.body;
+  const user = await updatePasswordService(req.user, password);
   return sucessHandle({ res, message: "sucess", data: user });
 });
 
@@ -97,7 +104,7 @@ router.patch(
 
 router.post(
   "/memory-to-cloud-upload-pic",
-  cloudUploadMiddleware.single("image"),
+  cloudUploadMiddleware({}).single("image"),
   async (req, res) => {
     try {
       const result = await memocloudFileUpload({

@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "node:path";
 import UserModel from "../../DB/models/userModel.js";
 import { createDoc, findOneDoc } from "../../DB/repos/repo.js";
 import { provider } from "../../enums/security.enums.js";
@@ -6,9 +8,13 @@ import {
   generateToken,
   verifyToken,
   createLoginTokens,
+  getSignature,
 } from "../../security/token.security.js";
 import { errorHandle } from "../../utils/resHandler.js";
 import { OAuth2Client } from "google-auth-library";
+import TokenModel from "../../DB/models/revokedToken.model.js";
+import { logoutType } from "../../enums/security.enums.js";
+import { keyGenrator, setValue } from "../../DB/repos/redis.repo.js";
 
 // google login client
 const client = new OAuth2Client(
@@ -62,9 +68,12 @@ export const loginService = async (email, password, iss) => {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
   //create token
+  const { signatures, audiance } = getSignature(isUser.role);
   const { accessToken, refreshToken } = createLoginTokens({
-    iss,
+    iss: "system",
     user: isUser,
+    signatures,
+    audiance,
   });
 
   return { accessToken, refreshToken, isUser };
@@ -183,4 +192,33 @@ export const gmailSigninService = async (googleToken) => {
     userInfo = user;
   }
   return { accessToken, refreshToken, userInfo };
+};
+export const logoutService = async ({
+  user,
+  jti,
+  iat = "",
+  flag = logoutType.allDevices,
+}) => {
+  if (flag == logoutType.allDevices) {
+    user.credantialChangedAt = Date.now();
+    await user.save();
+  } else {
+    //* revoke token use mongodb as a way to store jti
+
+    // await TokenModel.create({
+    //   userId: user._id,
+    //   jti,
+    //   expiresIn: new Date((iat + 7 * 24 * 60 * 60) * 1000),
+    // });
+    //* revoke token use redis as a way to store jti
+
+    const key = keyGenrator({ purpose: revokeToken, userId: user._id, jti });
+    await setValue({
+      key,
+      value: jti,
+      ttl: 7 * 24 * 60 * 60,
+    });
+  }
+
+  return { data: {} };
 };

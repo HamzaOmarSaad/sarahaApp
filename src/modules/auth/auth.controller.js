@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   gmailSigninService,
   loginService,
+  logoutService,
   refreshService,
   sendOtpService,
   signupService,
@@ -10,12 +11,18 @@ import {
 import { errorHandle, sucessHandle } from "../../utils/resHandler.js";
 import { loginSchema, signupSchema } from "./auth.validation.js";
 import { validateMiddleware } from "../../middlewares/validation.middleware.js";
+import { uploadMiddleware } from "../../middlewares/multer.middleware.js";
+import { authentication } from "../../middlewares/security.middleware.js";
+import { ProfilePictureService } from "../userModule/user.service.js";
+import {
+  logoutSchema,
+  profileImageSchema,
+} from "../userModule/user.validation.js";
 
 const router = Router();
 
 router.post("/signup", validateMiddleware(signupSchema), async (req, res) => {
   const { userName, password, email, gender } = req.body;
-
 
   const data = await signupService({ userName, password, email, gender });
   return sucessHandle({
@@ -62,5 +69,22 @@ router.post("/signup/google", async (req, res) => {
   const data = await gmailSigninService(googleToken);
   return sucessHandle({ res, data });
 });
+
+router.patch(
+  "/logout",
+  authentication,
+  validateMiddleware(logoutSchema),
+  async (req, res, next) => {
+    const flag = req.body;
+
+    const { data } = await logoutService({
+      user: req.user,
+      flag,
+      jti: req.decoded.jti,
+      iat: req.decoded.iat,
+    });
+    return sucessHandle({ res, message: "logout sucessfully", data });
+  },
+);
 
 export default router;

@@ -14,3 +14,7 @@ export const provider = {
   system: 0,
   google: 1,
 };
+export const logoutType = {
+  allDevices: "all",
+  oneDevice: "one",
+};

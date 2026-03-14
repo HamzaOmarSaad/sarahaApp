@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import {
   ACCESS_EXPIRES_IN,
   JWT_REFRESH_SECRET,
@@ -13,58 +14,58 @@ import {
   tokenTypeEnum,
 } from "../enums/security.enums.js";
 
-export const generateToken = ({ payload, options, tokentype, signature }) => {
+export const generateToken = ({
+  payload,
+  role = RoleEnum.user,
+  options = {},
+  tokentype,
+  signatures,
+}) => {
   if (tokentype == tokenTypeEnum.access) {
-    return jwt.sign(payload, JWT_SECRET, {
+    return jwt.sign(payload, signatures.accessSignature, {
       expiresIn: ACCESS_EXPIRES_IN,
+      audience: role,
       ...options,
     });
   } else if (tokentype == tokenTypeEnum.referesh) {
-    return jwt.sign(payload, JWT_REFRESH_SECRET, {
+    return jwt.sign(payload, signatures.refeshSignature, {
       expiresIn: REFRESH_EXPIRES_IN,
+      audience: role,
       ...options,
     });
   }
 };
-export const verifyToken = ({ token, tokentype }) => {
-  try {
-    if (tokentype === "access") {
-      return jwt.verify(token, process.env.JWT_SECRET);
-    }
 
-    if (tokentype === "refresh") {
-      return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-    }
-  } catch (err) {
-    throw errorHandle({
-      message: "Token verification failed",
-      status: 401,
-    });
-  }
-};
+export const createLoginTokens = ({ iss = "", user, audiance, signatures }) => {
+  const jwtid = crypto.randomUUID();
 
-export const createLoginTokens = ({ iss = "", user, audiance = "" }) => {
   const accessToken = generateToken({
     payload: { _id: user._id },
+    signatures,
+    tokentype: tokenTypeEnum.access,
+    signatures,
+    role: [tokenTypeEnum.access, audiance],
+
     options: {
       expiresIn: ACCESS_EXPIRES_IN,
       issuer: iss,
-      // audiance: [tokenTypeEnum.access, audiance],
+      jwtid,
     },
-    tokentype: tokenTypeEnum.access,
   });
   const refreshToken = generateToken({
     payload: { _id: user._id },
+    tokentype: tokenTypeEnum.referesh,
+    signatures,
+    role: [tokenTypeEnum.referesh, audiance],
+
     options: {
       expiresIn: REFRESH_EXPIRES_IN,
       issuer: iss,
-      // audiance: [tokenTypeEnum.referesh],
+      jwtid,
     },
-    tokentype: tokenTypeEnum.referesh,
   });
   return { accessToken, refreshToken };
 };
-// audiance based signature choosing (not implemented yet  )
 export const getSignature = (role) => {
   let accessSignature = undefined;
   let refeshSignature = undefined;
@@ -86,4 +87,21 @@ export const getSignature = (role) => {
     signatures: { accessSignature, refeshSignature },
     audiance,
   };
+};
+
+export const verifyToken = ({ token, tokentype }) => {
+  try {
+    if (tokentype === "access") {
+      return jwt.verify(token, process.env.JWT_SECRET);
+    }
+
+    if (tokentype === "refresh") {
+      return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    }
+  } catch (err) {
+    throw errorHandle({
+      message: "Token verification failed",
+      status: 401,
+    });
+  }
 };
