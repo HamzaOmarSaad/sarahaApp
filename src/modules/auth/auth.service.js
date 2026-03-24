@@ -14,12 +14,18 @@ import { errorHandle } from "../../utils/resHandler.js";
 import { OAuth2Client } from "google-auth-library";
 import TokenModel from "../../DB/models/revokedToken.model.js";
 import { logoutType } from "../../enums/security.enums.js";
-import { keyGenrator, setValue } from "../../DB/repos/redis.repo.js";
+import {
+  getValue,
+  TokenkeyGenrator,
+  setValue,
+} from "../../DB/repos/redis.repo.js";
+import { CLIENT_ID } from "../../../config/config.service.js";
+import { otpkeyGenerator, sendOtp, verifyOtp } from "../../utils/OTPHandler.js";
 
 // google login client
-const client = new OAuth2Client(
-  "884770927564-aqqt68ea32mh8rnl9rdm2bbu2ak5hm8s.apps.googleusercontent.com",
-);
+const client = new OAuth2Client(CLIENT_ID);
+//---------------------sign up and confirmation -----------------------
+//* signing up and sending otp
 export const signupService = async ({ userName, password, email, gender }) => {
   const isEmail = await findOneDoc({
     filter: { email },
@@ -42,15 +48,26 @@ export const signupService = async ({ userName, password, email, gender }) => {
     provider: provider.system,
   };
   const user = await createDoc({ model: UserModel, data });
+  await sendOtp(email, "signup");
   return user;
 };
+//* verfiying the email and setting 2 step verfication on
 
+export const confirmEmail = async (email, otp) => {
+  verifyOtp(email, otp, "signup");
+};
+//---------------------login and confirmation -----------------------
+//* log in without two step verfication and if found then sending otp
 export const loginService = async (email, password, iss) => {
   const isUser = await findOneDoc({
     filter: { email },
     model: UserModel,
     select: "_id email password  firstName lastName",
   });
+  // check email
+  if (!isUser) {
+    throw errorHandle({ message: "wrong credantials", status: 402 });
+  }
   // chech provider
   if (isUser.provider == provider.google) {
     throw errorHandle({
@@ -58,96 +75,44 @@ export const loginService = async (email, password, iss) => {
       status: 409,
     });
   }
-  // check email
-  if (!isUser) {
-    throw errorHandle({ message: "wrong credantials", status: 402 });
-  }
   // check password
   const match = await compareHash({ text: password, hashed: isUser.password });
   if (!match) {
     throw errorHandle({ message: "wrong credantials", status: 402 });
   }
-  //create token
-  const { signatures, audiance } = getSignature(isUser.role);
+  if (!isUser.twoFactorEnabled) {
+    const { signatures, audiance } = getSignature(isUser.role);
+    const { accessToken, refreshToken } = createLoginTokens({
+      iss: "system",
+      user: isUser,
+      signatures,
+      audiance,
+    });
+    return { accessToken, refreshToken, isUser };
+  } else {
+    await sendOtp(email, "login");
+    return { message: "otp sent" };
+  }
+};
+//* verfiying the email and sending tokens
+
+export const confirmloginEmail = async (email, otp) => {
+  const user = await verifyOtp(email, otp, "login");
+  const { signatures, audiance } = getSignature(user.role);
   const { accessToken, refreshToken } = createLoginTokens({
     iss: "system",
-    user: isUser,
+    user: user,
     signatures,
     audiance,
   });
-
-  return { accessToken, refreshToken, isUser };
+  return { accessToken, refreshToken, user };
 };
+//---------------------sign up using gmail -----------------------
 
-export const sendOtpService = async (email) => {
-  const otp = generateOTP();
-
-  await UserModel.updateOne(
-    { email },
-    {
-      otp,
-      otpExpires: Date.now() + 5 * 60 * 1000,
-    },
-  );
-
-  await sendOTPEmail(email, otp);
-};
-export const reSendOtpService = async (email) => {
-  if (user.otpExpires > Date.now() - 60 * 1000) {
-    throw new Error("Wait before requesting another OTP");
-  }
-  const otp = generateOTP();
-
-  await UserModel.updateOne(
-    { email },
-    {
-      otp,
-      otpExpires: Date.now() + 5 * 60 * 1000,
-    },
-  );
-
-  await sendOTPEmail(email, otp);
-};
-
-export const verifyOTPService = async (email, otp) => {
-  const user = await findOneDoc({ filter: { email }, model: UserModel });
-
-  if (!user) return res.status(404).json({ message: "User not found" });
-
-  if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
-
-  if (user.otpExpires < Date.now())
-    return res.status(400).json({ message: "OTP expired" });
-
-  user.isEmailConfirmend = true;
-  user.otp = null;
-  user.otpExpires = null;
-
-  await user.save();
-};
-
-export const refreshService = async (refreshToken) => {
-  const decoded = verifyToken({ token: refreshToken, tokentype: "refersh" });
-  const user = await findOneDoc({
-    model: UserModel,
-    filter: { id: decoded._id },
-  });
-  if (!user) throw errorHandle({ message: "not a user " });
-
-  const accessToken = generateToken({
-    payload: { _id: decoded._id },
-    options: {
-      expiresIn: "1h",
-    },
-    tokentype: tokenTypeEnum.access,
-  });
-  return accessToken;
-};
 export const gmailSigninService = async (googleToken) => {
   const ticket = await client.verifyIdToken({
     idToken: googleToken,
-    audaince:
-      "884770927564-aqqt68ea32mh8rnl9rdm2bbu2ak5hm8s.apps.googleusercontent.com",
+    audience: CLIENT_ID,
   });
   const { email, name, email_verified } = ticket.getPayload();
 
@@ -168,7 +133,7 @@ export const gmailSigninService = async (googleToken) => {
       });
     }
     tokens = createLoginTokens({
-      iss,
+      iss: "google",
       user: isEmailExist,
     });
     accessToken = tokens.accessToken;
@@ -193,6 +158,8 @@ export const gmailSigninService = async (googleToken) => {
   }
   return { accessToken, refreshToken, userInfo };
 };
+//---------------------log out-----------------------
+
 export const logoutService = async ({
   user,
   jti,
@@ -212,7 +179,10 @@ export const logoutService = async ({
     // });
     //* revoke token use redis as a way to store jti
 
-    const key = keyGenrator({ purpose: revokeToken, userId: user._id, jti });
+    const key = TokenkeyGenrator({
+      userId: user._id,
+      jti,
+    });
     await setValue({
       key,
       value: jti,
@@ -221,4 +191,60 @@ export const logoutService = async ({
   }
 
   return { data: {} };
+};
+//---------------------OTP for email VERFICATION -----------------------
+
+export const sendOtpService = async (email, type) => {
+  sendOtp(email, type);
+};
+export const reSendOtpService = async (email) => {
+  const key = otpkeyGenerator({ email });
+
+  const existingOtp = await getValue({ key });
+  if (existingOtp) {
+    throw new Error("Wait before requesting another OTP");
+  }
+  await sendOtp(email);
+};
+export const twoFactorEnableService = async (user, email) => {
+  sendOtp(email);
+  user.twoFactorEnabled = true;
+  await user.save();
+  return { message: "otp is sent" };
+  S;
+};
+
+//---------------------refresh token searvice-----------------------
+
+export const refreshTokenService = async (refreshToken) => {
+  const decoded = verifyToken({ token: refreshToken, tokentype: "refresh" });
+  const user = await findOneDoc({
+    model: UserModel,
+    filter: { id: decoded._id },
+  });
+  if (!user) throw errorHandle({ message: "not a user " });
+
+  const accessToken = generateToken({
+    payload: { _id: decoded._id },
+    options: {
+      expiresIn: "1h",
+    },
+    tokentype: tokenTypeEnum.access,
+  });
+  return accessToken;
+};
+//------------------------- password services-------------------------
+//* forget password
+export const forgetPasswordService = async (email, newPassword, otp) => {
+  const isverfird = verifyOtp(email, otp, "reset");
+  if (!isverfird) {
+    throw new Error("wrong otp");
+  }
+  const user = await findOneDoc({ model: UserModel, filter: { email } });
+  const res = updateDocByid({
+    model: UserModel,
+    id: user._id,
+    updatedValue: { password: newPassword },
+  });
+  return res;
 };

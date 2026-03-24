@@ -33,3 +33,11 @@ export const loginSchema = {
   //     username: joi.string().email().required(),
   //   }),
 };
+export const forgetPasswordSchema = {
+  body: joi.object({
+    email: joi.string().email().required(),
+    newPassword: joi.string().min(10).required(),
+    otp: joi.number().min(6).max(6),
+  }),
+};
+e;

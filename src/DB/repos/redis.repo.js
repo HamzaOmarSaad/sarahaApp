@@ -1,11 +1,11 @@
 import { errorHandle } from "../../utils/resHandler";
 import { redisClient } from "../config/redis.connections";
 
-export const keyPrefixGenrator = async ({ purpose, userId }) => {
-  return `user:${purpose}:${userId}`;
+export const keyPrefixGenrator = ({ purpose, identefier }) => {
+  return `User:${purpose}:${identefier}`;
 };
-export const keyGenrator = async ({ jti, userId }) => {
-  return `:${keyPrefixGenrator({ purpose: "revokeToken", userId })}:${jti}`;
+export const TokenkeyGenrator = ({ jti, userId }) => {
+  return `:${keyPrefixGenrator({ purpose: "revokeToken", identefier: userId })}:${jti}`;
 };
 
 export const setValue = async ({ key, value, ttl }) => {

@@ -18,7 +18,7 @@ const Bootstrap = async () => {
   app.use("/uploads", express.static("./uploads"));
 
   //const jwtSecretGenrator = crypto.randomBytes(64).toString("hex"); // JWT
-  //const encryptionKeyGenrator = crypto.randomBytes(32).toString("hex"); // AES-256
+  //const encryptionTokenkeyGenrator = crypto.randomBytes(32).toString("hex"); // AES-256
 
   await connectDB();
   await connectRedis();

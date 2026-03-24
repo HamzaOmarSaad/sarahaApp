@@ -4,7 +4,7 @@ import { findOneDoc } from "../DB/repos/repo.js";
 import UserModel from "../DB/models/userModel.js";
 import { verifyToken } from "../security/token.security.js";
 import TokenModel from "../DB/models/revokedToken.model.js";
-import { getValue } from "../DB/repos/redis.repo.js";
+import { getValue, TokenkeyGenrator } from "../DB/repos/redis.repo.js";
 
 export const authentication = async (req, res, next) => {
   const { authorization } = req.headers;
@@ -41,7 +41,7 @@ export const authentication = async (req, res, next) => {
   // }
   //* revoke token use redis as a way to store jti
   const isbanned = await getValue({
-    key: keyGenrator({
+    key: TokenkeyGenrator({
       purpose: revokeToken,
       userId: decoded._id,
       jti: decoded.jti,

@@ -28,9 +28,9 @@ router.get("/userinfo", authentication, async (req, res, next) => {
   const user = await UserModel.findById(req.user._id);
   return sucessHandle({ res, message: "sucess", data: user });
 });
-router.get("/updatePassword", authentication, async (req, res, next) => {
-  const { password } = req.body;
-  const user = await updatePasswordService(req.user, password);
+router.post("/updatePassword", authentication, async (req, res, next) => {
+  const { oldPassword, newPassword } = req.body;
+  const user = await updatePasswordService(req.user, newPassword, oldPassword);
   return sucessHandle({ res, message: "sucess", data: user });
 });
 

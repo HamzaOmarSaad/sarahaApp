@@ -1,5 +1,5 @@
 import UserModel from "../../DB/models/userModel.js";
-import { deleteDoc, updateDocByid } from "../../DB/repos/repo.js";
+import { deleteDoc, findOneDoc, updateDocByid } from "../../DB/repos/repo.js";
 import fs from "fs/promises";
 import path from "path";
 import { errorHandle } from "../../utils/resHandler.js";
@@ -9,6 +9,9 @@ import {
   deleteFolder,
   deleteFolderAssets,
 } from "../../utils/multer/cloudinary.services.js";
+import { compareHash } from "../../security/Hashing.security.js";
+
+// delete user
 
 export const deleteUserDiskStorage = async (user) => {
   if (user.profilePicture) {
@@ -50,7 +53,15 @@ export const deleteUserCloudStorage = async (user) => {
   }
   await deleteDoc({ model: UserModel, filter: { _id: user._id } });
 };
-export const updatePasswordService = async (user, newPassword) => {
+
+export const updatePasswordService = async (user, newPassword, oldPassword) => {
+  const isPasswordMatch = await compareHash({
+    text: oldPassword,
+    hashed: user.password,
+  });
+  if (!isPasswordMatch) {
+    throw errorHandle({ message: "old password is wrong ", status: 402 });
+  }
   const user = updateDocByid({
     model: UserModel,
     id: user._id,

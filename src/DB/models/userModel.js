@@ -60,6 +60,10 @@ const UserSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
     isEmailConfirmend: {
       type: Boolean,
       default: false,
